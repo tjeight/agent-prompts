@@ -1,110 +1,37 @@
-"""
-HR Agent powered by Grok (xAI)
-Single-file, minimal, extensible.
-
-Author: You
-"""
-
+# hr_agent.py
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+from langgraph.prebuilt import create_react_agent
+from langchain_core.tools import tool
 import os
-import requests
-import json
 
-# ==============================
-# CONFIG
-# ==============================
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = "hf_xxxxxxxxxxxxxx"  # ← your token
 
-GROK_API_KEY = os.getenv("GROK_API_KEY")  # export GROK_API_KEY="your_key"
-GROK_API_URL = "https://api.x.ai/v1/chat/completions"
-MODEL_NAME = "grok-2"
-
-# ==============================
-# HR SYSTEM PROMPT
-# ==============================
-
-HR_SYSTEM_PROMPT = """
-You are an experienced HR professional and talent strategist.
-
-You specialize in:
-- Candidate screening
-- Interview questions
-- Hiring decisions
-- HR policies
-- Performance reviews
-- Workplace communication
-
-Your tone is professional, unbiased, structured, and practical.
-You think step-by-step before answering.
-"""
-
-# ==============================
-# CORE HR AGENT
-# ==============================
-
-class HRAgent:
-    def __init__(self, api_key: str):
-        if not api_key:
-            raise ValueError("GROK_API_KEY not set")
-        self.api_key = api_key
-
-    def ask(self, user_query: str) -> str:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "model": MODEL_NAME,
-            "messages": [
-                {"role": "system", "content": HR_SYSTEM_PROMPT},
-                {"role": "user", "content": user_query}
-            ],
-            "temperature": 0.4
-        }
-
-        response = requests.post(
-            GROK_API_URL,
-            headers=headers,
-            data=json.dumps(payload),
-            timeout=60
-        )
-
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Grok API Error {response.status_code}: {response.text}"
-            )
-
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+llm = HuggingFaceEndpoint(
+    repo_id="Qwen/Qwen2.5-7B-Instruct",
+    temperature=0.6,
+    max_new_tokens=400
+)
+model = ChatHuggingFace(llm=llm)
 
 
-# ==============================
-# CLI INTERFACE
-# ==============================
-
-def main():
-    print("\n🧑‍💼 HR Agent (powered by Grok)")
-    print("Type 'exit' to quit.\n")
-
-    agent = HRAgent(GROK_API_KEY)
-
-    while True:
-        query = input("HR Query ➜ ").strip()
-        if query.lower() in {"exit", "quit"}:
-            print("👋 HR Agent signing off.")
-            break
-
-        try:
-            answer = agent.ask(query)
-            print("\n📋 HR Response:\n")
-            print(answer)
-            print("\n" + "-" * 50 + "\n")
-        except Exception as e:
-            print(f"❌ Error: {e}\n")
+@tool
+def search_candidates(skill: str, experience_years: int) -> str:
+    """Fake candidate search (replace with real API later)"""
+    return f"Found 3 candidates with {skill} and ≥{experience_years} years:\n• Ana – 5y\n• Raj – 8y\n• Priya – 4y"
 
 
-# ==============================
-# ENTRY POINT
-# ==============================
+@tool
+def calculate_notice_period(join_date: str) -> str:
+    """Dummy notice period calculator"""
+    return "Standard notice: 60 days"
+
+
+tools = [search_candidates, calculate_notice_period]
+
+hr_agent = create_react_agent(model, tools)
+
 
 if __name__ == "__main__":
-    main()
+    query = "Find backend engineer with at least 5 years experience"
+    result = hr_agent.invoke({"messages": [{"role": "user", "content": query}]})
+    print(result["messages"][-1].content)
