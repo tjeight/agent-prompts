@@ -1,3 +1,8 @@
+
+#this js bae hr agent
+
+
+
 # hr_agent.py
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langgraph.prebuilt import create_react_agent
